@@ -6,6 +6,8 @@ import { UserEntity } from './user.entity';
 import { sign } from 'jsonwebtoken';
 import { UserResponseInterface } from './types/user-response.interface';
 import { JWT_SECRET } from 'src/config';
+import { LoginDto } from './dto/login.dto';
+import { compare } from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -27,14 +29,40 @@ export class UserService {
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
-    const emptyUser = new UserEntity();
-    const user: UserEntity = {
-      ...emptyUser,
-      ...createUserDto,
-      hash: emptyUser.hash,
-    };
+    const newUser = new UserEntity();
+    Object.assign(newUser, createUserDto);
 
-    return await this.userRepository.save<UserEntity>(user);
+    return await this.userRepository.save<UserEntity>(newUser);
+  }
+
+  async login(loginDto: LoginDto): Promise<UserEntity> {
+    const user = await this.userRepository.findOne(
+      {
+        email: loginDto.email,
+      },
+      { select: ['id', 'bio', 'username', 'password', 'image', 'email'] },
+    );
+    console.log(user);
+    if (!user) {
+      throw new HttpException(
+        'Credentials are not valid',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const isPasswordCorrect: boolean = await compare(
+      loginDto.password,
+      user.password,
+    );
+
+    if (!isPasswordCorrect) {
+      throw new HttpException(
+        'Credentials are not valid',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    return user;
   }
 
   buildUserResponse(user: UserEntity): UserResponseInterface {
@@ -46,6 +74,9 @@ export class UserService {
       },
       JWT_SECRET,
     );
+
+    delete user.password;
+
     return {
       ...user,
       token,
