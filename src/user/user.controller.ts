@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
+  Req,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -9,6 +11,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { UserResponseInterface } from './types/user-response.interface';
 import { UserService } from './user.service';
+import { ExtendedRequest } from './types/extended-request.interface';
 
 @Controller()
 export class UserController {
@@ -30,5 +33,12 @@ export class UserController {
   ): Promise<UserResponseInterface> {
     const user = await this.userService.login(createUserDto);
     return this.userService.buildUserResponse(user);
+  }
+
+  @Get('user')
+  currentUser(
+    @Req() request: ExtendedRequest,
+  ): Promise<UserResponseInterface> | any {
+    return this.userService.buildUserResponse(request.user);
   }
 }
